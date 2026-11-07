@@ -96,9 +96,27 @@ void RayAudioProcessorEditor::setupKnob (juce::Slider& k)
 void RayAudioProcessorEditor::paint (juce::Graphics& g)
 {
     if (background.isValid())
+    {
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
         g.drawImage (background, getLocalBounds().toFloat());
+    }
     else
+    {
         g.fillAll (juce::Colour (0xff101010));
+    }
+
+    // Erase the mockup's baked green spheres so only our drawn knobs show — a soft
+    // dark radial that fades into the panel (centres are the knob centres in 600-space).
+    const float s = (float) getWidth() / 600.0f;
+    const juce::Point<float> centres[] { { 418, 150 }, { 513, 150 }, { 418, 236 }, { 513, 236 } };
+    for (auto c : centres)
+    {
+        const float cx = c.x * s, cy = c.y * s, rad = 52.0f * s;
+        juce::ColourGradient er (juce::Colour (0xff16120c), cx, cy,
+                                 juce::Colour (0x0016120c), cx, cy + rad, true);
+        g.setGradientFill (er);
+        g.fillEllipse (cx - rad, cy - rad, rad * 2.0f, rad * 2.0f);
+    }
 }
 
 void RayAudioProcessorEditor::resized()
