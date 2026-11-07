@@ -1,0 +1,57 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get JUCE
+        run: git clone --depth 1 --branch 8.0.6 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DRAY_COPY_PLUGIN=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist/RayClipper
+          ditto build/ray_artefacts/Release/VST3/RayClipper.vst3 dist/RayClipper/RayClipper.vst3
+          ditto build/ray_artefacts/Release/AU/RayClipper.component dist/RayClipper/RayClipper.component
+          ditto -c -k --keepParent dist/RayClipper "RayClipper-${{ github.ref_name }}-macOS.zip"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item -Recurse "build/ray_artefacts/Release/VST3/RayClipper.vst3" dist/
+          Compress-Archive -Path dist/RayClipper.vst3 -DestinationPath "RayClipper-${{ github.ref_name }}-Windows.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RayClipper-${{ runner.os }}
+          path: RayClipper-*.zip
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: RayClipper-*.zip

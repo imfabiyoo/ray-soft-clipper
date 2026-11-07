@@ -2,8 +2,13 @@ cmake_minimum_required(VERSION 3.22)
 project(ray VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14" CACHE STRING "" FORCE)
+if(APPLE)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14" CACHE STRING "" FORCE)
+endif()
+
+# ON for local dev (installs to the user plug-in folder); OFF in CI.
+option(RAY_COPY_PLUGIN "Install plugin to the user plug-in folder after build" ON)
 
 add_subdirectory(JUCE)
 
@@ -16,7 +21,7 @@ juce_add_plugin(ray
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
-    COPY_PLUGIN_AFTER_BUILD TRUE
+    COPY_PLUGIN_AFTER_BUILD ${RAY_COPY_PLUGIN}
     VST3_CATEGORIES Fx Distortion
     AU_MAIN_TYPE kAudioUnitType_Effect)
 
