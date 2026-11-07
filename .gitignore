@@ -1,0 +1,15 @@
+# Build output
+build/
+*.log
+
+# Local tooling
+.venv/
+
+# JUCE is pulled separately (see README) — not vendored
+JUCE/
+
+# Reverse-engineering scratch: contains third-party copyrighted material. Do NOT publish.
+re/
+
+# macOS
+.DS_Store
