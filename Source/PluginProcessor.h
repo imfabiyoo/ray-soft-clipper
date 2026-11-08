@@ -3,10 +3,6 @@
 #include <array>
 #include <atomic>
 
-// ray — rebuild of Initial Clipper (Initial Audio). DSP reverse-engineered from
-// the shipped VST3 (arm64) with REA/Ghidra. Signal chain, per the binary:
-//   8x oversample (half-band FIR equiripple) -> per-sample saturate+softclip ->
-//   downsample -> hard clip to [-1, 1].
 class RayAudioProcessor : public juce::AudioProcessor
 {
 public:
@@ -38,9 +34,6 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    // Visualizer tap: post-processing mono samples the editor reads for the
-    // spectrogram. Lock-free ring; the audio thread writes, the UI thread reads
-    // a snapshot. Tearing on a redraw is harmless for eye-candy. Size is pow2.
     static constexpr int scopeSize = 2048;
     static constexpr int scopeMask = scopeSize - 1;
     std::array<float, scopeSize> scopeBuf {};
@@ -50,7 +43,7 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
-    int oversampleFactor = 3;   // 2^3 = 8x, matches the binary
+    int oversampleFactor = 3;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RayAudioProcessor)
 };

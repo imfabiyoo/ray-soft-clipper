@@ -11,14 +11,11 @@ namespace ids {
     constexpr auto saturate  = "saturate";
 }
 
-// Small-signal saturation gain G(P), P = saturation amount (0.1..2.0).
-// Cubic fit to the original (max error 6e-4). out = tanh(P*g*s) * (G(P)/P).
 static inline float satGain (float P)
 {
     return ((-0.051512f * P + 0.380001f) * P - 0.019802f) * P + 1.000860f;
 }
 
-// Ceiling clamp constant from the binary: bit pattern 0x3f7fffef (~0.99999797f).
 static float ceilingClamp()
 {
     uint32_t bits = 0x3f7fffefu;
@@ -39,7 +36,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout RayAudioProcessor::createLay
     using P = juce::AudioParameterFloat;
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    // Ranges match the original Initial Clipper exactly (read via pedalboard).
     layout.add (std::make_unique<P>(juce::ParameterID { ids::input, 1 }, "Input",
         juce::NormalisableRange<float>(-9.0f, 9.0f, 0.001f), 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("dB")));
@@ -63,7 +59,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RayAudioProcessor::createLay
 void RayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     juce::ignoreUnused (sampleRate);
-    // 8x oversampling, half-band FIR equiripple, maximum quality — matches the binary.
+
     oversampler = std::make_unique<juce::dsp::Oversampling<float>>(
         getTotalNumOutputChannels(), oversampleFactor,
         juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple, true, false);
@@ -94,7 +90,7 @@ void RayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     const float lo = -0.999999f, hi = ceilingClamp();
 
     juce::dsp::AudioBlock<float> block (buffer);
-    auto up = oversampler->processSamplesUp (block);   // 8x
+    auto up = oversampler->processSamplesUp (block);
 
     for (size_t ch = 0; ch < up.getNumChannels(); ++ch)
     {
@@ -103,16 +99,15 @@ void RayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         for (size_t i = 0; i < n; ++i)
         {
             const float s = d[i];
-            float x = gain * s;                        // input gain
+            float x = gain * s;
 
             if (satOn)
             {
                 const float P = (s < 0.0f) ? nSat : pSat;
-                // tanh drive is P*s (no input gain); input gain scales the output.
+
                 x = std::tanh (P * s) * (satGain (P) / P) * gain;
             }
 
-            // Threshold soft-clip (exact transfer from the binary):
             if (x > T)
                 x = T + (1.0f - T) * (1.0f - T / x);
             else if (x < -T)
@@ -122,9 +117,8 @@ void RayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
 
-    oversampler->processSamplesDown (block);           // back to 1x
+    oversampler->processSamplesDown (block);
 
-    // Final safety hard-clip to [-1, 1] after downsampling.
     for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
     {
         float* d = buffer.getWritePointer (ch);
@@ -132,7 +126,6 @@ void RayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             d[i] = juce::jlimit (-1.0f, 1.0f, d[i]);
     }
 
-    // Tap the output (mono sum) into the scope ring for the spectrogram.
     const int nCh = buffer.getNumChannels();
     const int nSm = buffer.getNumSamples();
     int w = scopeWrite.load (std::memory_order_relaxed);

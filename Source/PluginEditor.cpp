@@ -2,38 +2,33 @@
 #include <cmath>
 #include <cstring>
 
-// ======================= 3D polished chrome knob ===========================
 void RayKnobLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h,
                                            float pos, float startAngle, float endAngle,
                                            juce::Slider&)
 {
-    // proportional margin so the drop shadow / glow never clip at the bounds
+
     const auto area = juce::Rectangle<float>((float) x, (float) y, (float) w, (float) h).reduced ((float) w * 0.09f);
     const auto c = area.getCentre();
     const float r = area.getWidth() * 0.5f;
     const float theta = startAngle + pos * (endAngle - startAngle) - juce::MathConstants<float>::halfPi;
     const juce::Point<float> dir (std::cos (theta), std::sin (theta));
 
-    // drop shadow
     g.setColour (juce::Colour (0x99000000));
     g.fillEllipse (area.expanded (1.0f).translated (0.0f, 2.0f));
 
-    // dark machined bezel
     g.setColour (juce::Colour (0xff0b0c0e));
     g.fillEllipse (area);
 
-    // polished-chrome face: mirror reflection (bright sky top, dark horizon, light ground)
     auto face = area.reduced (r * 0.12f);
     juce::ColourGradient fg (juce::Colours::white, face.getCentreX(), face.getY(),
                              juce::Colour (0xffeef1f4), face.getCentreX(), face.getBottom(), false);
     fg.addColour (0.30, juce::Colour (0xffc2c7cd));
     fg.addColour (0.48, juce::Colour (0xff3d4045));
-    fg.addColour (0.54, juce::Colour (0xff24262a));   // hard chrome horizon
+    fg.addColour (0.54, juce::Colour (0xff24262a));
     fg.addColour (0.70, juce::Colour (0xff9aa0a7));
     g.setGradientFill (fg);
     g.fillEllipse (face);
 
-    // hot specular highlight (top-left) + bright rim
     {
         juce::ColourGradient hot (juce::Colours::white.withAlpha (0.95f),
                                   c.x - r * 0.34f, c.y - r * 0.44f,
@@ -45,14 +40,13 @@ void RayKnobLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
         g.drawEllipse (face.reduced (0.8f), 1.2f);
     }
 
-    // live sunlight bouncing off the chrome (strong warm wash, rim glow, sweeping glint)
     if (sunAmt > 0.02f)
     {
-        g.setColour (sunCol.withAlpha (0.5f * sunAmt));                 // warm wash
+        g.setColour (sunCol.withAlpha (0.5f * sunAmt));
         g.fillEllipse (face);
-        g.setColour (sunCol.brighter (0.5f).withAlpha (0.85f * sunAmt)); // warm rim glow
+        g.setColour (sunCol.brighter (0.5f).withAlpha (0.85f * sunAmt));
         g.drawEllipse (face.reduced (1.0f), 2.4f);
-        const float ga = sunPhase * 0.8f;                              // orbiting bright glint
+        const float ga = sunPhase * 0.8f;
         const juce::Point<float> gp = c + juce::Point<float> (std::cos (ga), std::sin (ga)) * (r * 0.46f);
         const float gr = r * 0.72f;
         juce::ColourGradient glint (juce::Colours::white.withAlpha (sunAmt), gp.x, gp.y,
@@ -62,7 +56,6 @@ void RayKnobLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
         g.fillEllipse (gp.x - gr, gp.y - gr, gr * 2.0f, gr * 2.0f);
     }
 
-    // dark recessed centre cap
     auto cap = face.reduced (face.getWidth() * 0.32f);
     juce::ColourGradient cg (juce::Colour (0xff3a3d42), cap.getCentreX(), cap.getY(),
                              juce::Colour (0xff0d0e10), cap.getCentreX(), cap.getBottom(), false);
@@ -71,7 +64,6 @@ void RayKnobLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
     g.setColour (juce::Colour (0x30ffffff));
     g.drawEllipse (cap, 1.0f);
 
-    // white indicator: dark groove + bright white pointer to the rim
     const juce::Point<float> a = c + dir * (cap.getWidth() * 0.45f);
     const juce::Point<float> b = c + dir * (r * 0.9f);
     g.setColour (juce::Colour (0xff0a0b0d));
@@ -81,13 +73,11 @@ void RayKnobLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
     g.fillEllipse (b.x - r * 0.08f, b.y - r * 0.08f, r * 0.16f, r * 0.16f);
 }
 
-// ============================== editor =====================================
 RayAudioProcessorEditor::RayAudioProcessorEditor (RayAudioProcessor& p)
     : AudioProcessorEditor (&p), proc (p)
 {
     background = juce::ImageCache::getFromMemory (BinaryData::ray_ui_png, BinaryData::ray_ui_pngSize);
 
-    // static fine grain for a tactile surface (built once)
     grain = juce::Image (juce::Image::ARGB, 180, 180, true);
     {
         juce::Random rng (0x9e3779b9);
@@ -139,7 +129,6 @@ void RayAudioProcessorEditor::setupKnob (juce::Slider& k)
     addAndMakeVisible (k);
 }
 
-// ----- parameter-driven visual mappings -----
 float RayAudioProcessorEditor::satMul() const
 {
     return juce::jlimit (0.1f, 2.0f, proc.apvts.getRawParameterValue ("posSat")->load());
@@ -150,16 +139,15 @@ float RayAudioProcessorEditor::hueTurns() const
 }
 float RayAudioProcessorEditor::inputNorm() const
 {
-    // signed sky: input 0 dB (centre) = nothing, below = shadows, above = sun
+
     return juce::jlimit (-1.0f, 1.0f, proc.apvts.getRawParameterValue ("input")->load() / 9.0f);
 }
 float RayAudioProcessorEditor::threshNorm() const
 {
-    // threshold drives total sun: left (-10 dB) = none, right (0 dB) = full blast
+
     return juce::jlimit (0.0f, 1.0f, (proc.apvts.getRawParameterValue ("threshold")->load() + 10.0f) / 10.0f);
 }
 
-// ----- hue/sat grade of the photo background, rebuilt only when it moves -----
 void RayAudioProcessorEditor::regradeIfNeeded()
 {
     if (! background.isValid() || getWidth() <= 0 || getHeight() <= 0) return;
@@ -188,11 +176,10 @@ void RayAudioProcessorEditor::regradeIfNeeded()
     gradedBg = img; gradedW = gw; gradedSat = s; gradedHue = hh;
 }
 
-// ----- waveform scope: time-domain envelope as a soft white chalky line -----
 void RayAudioProcessorEditor::drawWaveform (juce::Graphics& g, juce::Rectangle<float> box)
 {
     const int W = juce::jmax (2, (int) box.getWidth());
-    const int N = 1536;                                      // samples in view (< ring)
+    const int N = 1536;
     const int wr = proc.scopeWrite.load (std::memory_order_acquire);
     const float midY = box.getCentreY();
     const float amp  = box.getHeight() * 0.46f;
@@ -212,7 +199,6 @@ void RayAudioProcessorEditor::drawWaveform (juce::Graphics& g, juce::Rectangle<f
         yBot[(size_t) x] = midY - mn * amp;
     }
 
-    // soft, blurred white waveform — the two envelope lines bleed into one glow
     juce::Path fill, top, bot;
     fill.startNewSubPath (box.getX(), yTop[0]);
     top .startNewSubPath (box.getX(), yTop[0]);
@@ -224,9 +210,9 @@ void RayAudioProcessorEditor::drawWaveform (juce::Graphics& g, juce::Rectangle<f
     for (int x = 1; x < W; ++x) bot.lineTo (box.getX() + (float) x, yBot[(size_t) x]);
 
     using PS = juce::PathStrokeType;
-    const float hw = box.getHeight() * 0.12f;   // wide soft halo blurs the lines together
+    const float hw = box.getHeight() * 0.12f;
     const float mw = box.getHeight() * 0.05f;
-    const float cw = box.getHeight() * 0.022f;  // soft core (never razor-sharp)
+    const float cw = box.getHeight() * 0.022f;
 
     g.setColour (juce::Colours::white.withAlpha (0.08f));
     g.fillPath (fill);
@@ -238,12 +224,10 @@ void RayAudioProcessorEditor::drawWaveform (juce::Graphics& g, juce::Rectangle<f
     g.strokePath (top, PS (cw, PS::curved, PS::rounded));  g.strokePath (bot, PS (cw, PS::curved, PS::rounded));
 }
 
-// fine surface grain over the left scene for a tactile, material feel.
 void RayAudioProcessorEditor::drawPanelDecor (juce::Graphics& g, float s)
 {
     auto b = getLocalBounds().toFloat();
 
-    // fine surface grain — only over the left scene; the right panel stays flat black
     if (grain.isValid())
     {
         g.setTiledImageFill (grain, 0, 0, 0.5f);
@@ -251,23 +235,20 @@ void RayAudioProcessorEditor::drawPanelDecor (juce::Graphics& g, float s)
     }
 }
 
-// ----- sunlight: broad soft parallel shafts + bloom, not a starburst -----
-static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float /*s*/,
+static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float ,
                      float in, float th, float hueT, float satM, float phase)
 {
-    // input is the signed sky: centre (0 dB) = nothing, lower = shadows, higher
-    // = sun. Input drives the crisp ray LINES; threshold drives the BLOOM.
-    const float sky  = in;                                  // -1..1
-    const float line = std::abs (sky);                      // ray/shadow line strength
-    if (line <= 0.001f) return;                             // input centred => nothing
-    const float bloomF = juce::jlimit (0.0f, 1.0f, th);     // threshold => bloom amount
+
+    const float sky  = in;
+    const float line = std::abs (sky);
+    if (line <= 0.001f) return;
+    const float bloomF = juce::jlimit (0.0f, 1.0f, th);
     const bool  shadow = sky < 0.0f;
     const juce::Colour warm = juce::Colour (0xfff6e2a0).withRotatedHue (hueT)
                                                        .withMultipliedSaturation (satM);
-    const juce::Colour col  = shadow ? juce::Colour (0xff04060a) : warm;   // shade or sun
+    const juce::Colour col  = shadow ? juce::Colour (0xff04060a) : warm;
     const juce::Point<float> src (b.getWidth() * 0.10f, -b.getHeight() * 0.18f);
 
-    // 1) diffuse corner bloom — only from the threshold knob (small)
     const float bloomA = (shadow ? 0.14f : 0.11f) * line * bloomF;
     if (bloomA > 0.002f)
     {
@@ -278,7 +259,6 @@ static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float /*s*/,
         g.fillRect (b);
     }
 
-    // 1b) the sun itself — a warm glowing disc where the rays are born (sun only)
     if (! shadow)
     {
         const float sunA = 0.55f * line;
@@ -292,22 +272,20 @@ static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float /*s*/,
 
     auto hash = [] (int i) { float x = std::sin ((float) i * 12.9898f) * 43758.5453f; return x - std::floor (x); };
 
-    // 2) crisp, defined ray/shadow LINES (input), with a soft bloom halo (threshold)
-    const float baseAngle = juce::degreesToRadians (60.0f);     // down-right
+    const float baseAngle = juce::degreesToRadians (60.0f);
     const float L = b.getWidth() * 1.9f;
-    const float wUnit = b.getWidth() * 0.20f;                   // wider rays
+    const float wUnit = b.getWidth() * 0.20f;
     const int   nShafts = 7;
     for (int k = 0; k < nShafts; ++k)
     {
-        const float f = (float) k / (float) (nShafts - 1);        // 0..1
-        const float offset = (f - 0.30f) * b.getWidth() * 1.3f;   // span the plugin
-        const float a = baseAngle + 0.03f * std::sin (phase * 0.2f + (float) k * 1.3f);  // slow sway
+        const float f = (float) k / (float) (nShafts - 1);
+        const float offset = (f - 0.30f) * b.getWidth() * 1.3f;
+        const float a = baseAngle + 0.03f * std::sin (phase * 0.2f + (float) k * 1.3f);
         const juce::Point<float> dir (std::cos (a), std::sin (a));
         const juce::Point<float> pp (-dir.y, dir.x);
         const juce::Point<float> c = src + pp * offset + dir * (b.getHeight() * 0.1f);
-        const float breathe = 0.9f + 0.1f * std::sin (phase * 0.2f + (float) k * 2.1f);  // gentle
-        // non-uniform width: per-ray character (biased to thin, some fat) that
-        // pulses over time, so small and large rays keep swapping.
+        const float breathe = 0.9f + 0.1f * std::sin (phase * 0.2f + (float) k * 2.1f);
+
         const float wSeed  = hash (k * 3 + 1);
         const float wPulse = 0.5f + 0.5f * std::sin (phase * 0.35f + wSeed * 6.2831f);
         const float widthPx = wUnit * (0.22f + 1.7f * wSeed * wSeed) * (0.55f + 0.9f * wPulse);
@@ -325,19 +303,17 @@ static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float /*s*/,
             g.setGradientFill (cg);
             g.fillPath (p);
         };
-        shaft (widthPx * 2.4f, (shadow ? 0.10f : 0.08f) * line * bloomF * breathe, false); // bloom halo (threshold)
-        shaft (widthPx * 0.62f, (shadow ? 0.48f : 0.42f) * line * breathe,          true);  // crisp line (input)
+        shaft (widthPx * 2.4f, (shadow ? 0.10f : 0.08f) * line * bloomF * breathe, false);
+        shaft (widthPx * 0.62f, (shadow ? 0.48f : 0.42f) * line * breathe,          true);
     }
 
-    // 3) atmosphere — dust motes catching the light + dappled canopy shade.
-    // dust motes drift along the beams and twinkle (sun only)
     if (! shadow)
     {
         const juce::Point<float> dir (std::cos (baseAngle), std::sin (baseAngle));
-        for (int i = 0; i < 60; ++i)   // more dust floating in the light
+        for (int i = 0; i < 60; ++i)
         {
             const float sx = hash (i * 2 + 1), sy = hash (i * 3 + 7), sp = 0.4f + hash (i * 5 + 2);
-            const float t  = std::fmod (phase * 0.03f * sp + sx + sy, 1.2f) - 0.1f;   // wrapping drift
+            const float t  = std::fmod (phase * 0.03f * sp + sx + sy, 1.2f) - 0.1f;
             const juce::Point<float> p = juce::Point<float> (b.getWidth() * sx, b.getHeight() * sy)
                                          + dir * (t * b.getWidth() * 0.5f);
             const float tw = 0.3f + 0.7f * std::abs (std::sin (phase * 1.6f + (float) i));
@@ -348,7 +324,6 @@ static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float /*s*/,
         }
     }
 
-    // dappled leaf shade — soft dark patches that sway, like a canopy overhead
     for (int i = 0; i < 7; ++i)
     {
         const float lx  = hash (i * 5 + 2), ly = hash (i * 7 + 1);
@@ -363,18 +338,16 @@ static void drawSky (juce::Graphics& g, juce::Rectangle<float> b, float /*s*/,
     }
 }
 
-// Glass sheen over the left scene, then a clean fade of the scene into the black.
 void RayAudioProcessorEditor::drawWindow (juce::Graphics& g, float s)
 {
     const float H = (float) getHeight();
-    const float sceneR = 340.0f * s;                       // right extent of the scene
+    const float sceneR = 340.0f * s;
     const juce::Rectangle<float> win (0.0f, 0.0f, sceneR, H);
 
-    // --- glass reflection: soft diagonal sheen streaks, full height -----------
     {
         juce::Graphics::ScopedSaveState save (g);
         g.reduceClipRegion (win.toNearestInt());
-        const juce::Point<float> d (0.5f, 0.86f);          // down-right
+        const juce::Point<float> d (0.5f, 0.86f);
         const juce::Point<float> p (-d.y, d.x);
         const float L = H * 1.8f;
         auto streak = [&] (float off, float halfW, float alpha)
@@ -392,40 +365,37 @@ void RayAudioProcessorEditor::drawWindow (juce::Graphics& g, float s)
         streak ( 80.0f, 22.0f, 0.06f);
     }
 
-    // --- dissolve the scene into black so its edges are indistinguishable ------
     {
-        const float f0 = 90.0f * s, f1 = 352.0f * s;   // long, very gradual fall-off
+        const float f0 = 90.0f * s, f1 = 352.0f * s;
         juce::ColourGradient fade (juce::Colour (0x00000000), f0, 0.0f,
                                    juce::Colour (0xff000000), f1, 0.0f, false);
-        fade.addColour (0.35, juce::Colour (0x22000000));   // ease in very slowly
+        fade.addColour (0.35, juce::Colour (0x22000000));
         fade.addColour (0.62, juce::Colour (0x77000000));
         fade.addColour (0.82, juce::Colour (0xcc000000));
         g.setGradientFill (fade);
         g.fillRect (f0, 0.0f, f1 - f0 + 1.0f, H);
     }
-    // wide soft vignette so the top / left / bottom edges melt away too
+
     const float vx = 46.0f * s, vy = 54.0f * s;
     g.setGradientFill (juce::ColourGradient (juce::Colour (0xff000000), 0.0f, 0.0f,
                                              juce::Colour (0x00000000), vx, 0.0f, false));
-    g.fillRect (0.0f, 0.0f, vx, H);                                                  // left
+    g.fillRect (0.0f, 0.0f, vx, H);
     g.setGradientFill (juce::ColourGradient (juce::Colour (0xff000000), 0.0f, 0.0f,
                                              juce::Colour (0x00000000), 0.0f, vy, false));
-    g.fillRect (0.0f, 0.0f, sceneR, vy);                                             // top
+    g.fillRect (0.0f, 0.0f, sceneR, vy);
     g.setGradientFill (juce::ColourGradient (juce::Colour (0xff000000), 0.0f, H,
                                              juce::Colour (0x00000000), 0.0f, H - vy, false));
-    g.fillRect (0.0f, H - vy, sceneR, vy);                                           // bottom
+    g.fillRect (0.0f, H - vy, sceneR, vy);
 }
 
-// Live cinematic glass FX that build as the sun shines (input knob > 0).
 static void drawGlassFX (juce::Graphics& g, juce::Rectangle<float> b,
                          float sun, float phase, float hueT, float satM)
 {
     if (sun <= 0.02f) return;
-    const juce::Point<float> src (b.getWidth() * 0.13f, b.getHeight() * 0.10f);  // sun position
+    const juce::Point<float> src (b.getWidth() * 0.13f, b.getHeight() * 0.10f);
     const juce::Point<float> axis = b.getCentre() - src;
     const juce::Colour warm = juce::Colour (0xfff4e3b0).withRotatedHue (hueT).withMultipliedSaturation (satM);
 
-    // 1) blown-out sun core bloom
     {
         const float R = b.getWidth() * 0.34f * (0.9f + 0.1f * std::sin (phase * 0.6f));
         juce::ColourGradient cg (juce::Colours::white.withAlpha (0.75f * sun), src.x, src.y,
@@ -434,7 +404,7 @@ static void drawGlassFX (juce::Graphics& g, juce::Rectangle<float> b,
         g.setGradientFill (cg);
         g.fillEllipse (src.x - R, src.y - R, R * 2.0f, R * 2.0f);
     }
-    // 2) chromatic lens-flare ghosts along the sun axis
+
     const juce::Colour ghost[] = { warm, juce::Colour (0xff66ffcc), juce::Colour (0xffff66aa),
                                    juce::Colour (0xff88aaff), warm, juce::Colour (0xffffc866) };
     const float ts[] = { 1.3f, 1.65f, 2.0f, 2.45f, 2.9f, 3.3f };
@@ -467,33 +437,26 @@ void RayAudioProcessorEditor::paint (juce::Graphics& g)
 
     const float s = (float) getWidth() / 700.0f;
 
-    drawWindow (g, s);   // window frame over the left scene (sun shines through)
+    drawWindow (g, s);
 
-    // unify the whole right-hand control area into a single flat black
     g.setColour (juce::Colour (0xff000000));
     g.fillRect (345.0f * s, 0.0f, (float) getWidth() - 345.0f * s, (float) getHeight());
 
-    // waveform drawn straight onto the black panel (no box / container)
     const juce::Rectangle<float> box (boxDesign.getX() * s, boxDesign.getY() * s,
                                       boxDesign.getWidth() * s, boxDesign.getHeight() * s);
     drawWaveform (g, box);
 
-    // labels drawn here (before the sun) so the light washes over them, like the waveform
     drawLabels (g);
 
-    // sun + clouds over the whole scene
     drawSky (g, getLocalBounds().toFloat(), s, inputNorm(), threshNorm(),
              hueTurns(), satMul(), phase);
 
-    // live cinematic glass FX as the sun shines in (input > 0)
     drawGlassFX (g, getLocalBounds().toFloat(), juce::jmax (0.0f, inputNorm()),
                  phase, hueTurns(), satMul());
 
     drawPanelDecor (g, s);
 }
 
-// Tequila labels rendered at the component's own resolution so the thin white
-// strokes stay crisp and bright (no downscaling from a fixed master image).
 void RayAudioProcessorEditor::drawLabels (juce::Graphics& g)
 {
     const float S = (float) getWidth() / 700.0f;
@@ -505,20 +468,19 @@ void RayAudioProcessorEditor::drawLabels (juce::Graphics& g)
         juce::Font font (juce::FontOptions().withName ("SF Pro Display").withHeight (htDesign * S));
         font.setBold (true);
         g.setFont (font);
-        // soft depth shadow
+
         g.setColour (juce::Colour (0x88000000));
         g.drawText (text, box.translated (1.0f * S, 1.5f * S), just, false);
-        // pure white #ffffff
+
         g.setColour (juce::Colour (0xffffffff));
         g.drawText (text, box, just, false);
     };
 
-    using J = juce::Justification;   // centred in the black panel (centre x = 515)
+    using J = juce::Justification;
     label ("input",      365.0f,  36.0f, 300.0f, 40.0f, 35.0f, J::centred);
     label ("threshold",  365.0f, 123.0f, 300.0f, 40.0f, 35.0f, J::centred);
     label ("saturation", 365.0f, 211.0f, 300.0f, 38.0f, 33.0f, J::centred);
 
-    // + / - drawn as bold white bars (half size)
     auto sign = [&] (float cxD, float cyD, float szD, bool plus)
     {
         const float cx = cxD * S, cy = cyD * S, sz = szD * S, th = szD * 0.26f * S;
@@ -526,15 +488,14 @@ void RayAudioProcessorEditor::drawLabels (juce::Graphics& g)
         g.fillRoundedRectangle (cx - sz * 0.5f, cy - th * 0.5f, sz, th, th * 0.4f);
         if (plus) g.fillRoundedRectangle (cx - th * 0.5f, cy - sz * 0.5f, th, sz, th * 0.4f);
     };
-    sign (446.0f, 272.0f, 15.0f, true);    // + left of the positive-sat knob
-    sign (586.0f, 272.0f, 15.0f, false);   // - right of the negative-sat knob
+    sign (446.0f, 272.0f, 15.0f, true);
+    sign (586.0f, 272.0f, 15.0f, false);
 }
 
 void RayAudioProcessorEditor::timerCallback()
 {
     phase += 0.05f;
 
-    // feed the live sunlight into the knobs so the chrome reacts to it
     knobLnf.sunAmt   = juce::jmax (0.0f, inputNorm());
     knobLnf.sunPhase = phase;
     knobLnf.sunCol   = juce::Colour (0xfff4e3b0).withRotatedHue (hueTurns())
@@ -552,7 +513,7 @@ void RayAudioProcessorEditor::resized()
         k.setBounds (juce::roundToInt ((cx - d * 0.5f) * s), juce::roundToInt ((cy - d * 0.5f) * s),
                      juce::roundToInt (d * s), juce::roundToInt (d * s));
     };
-    // stacked layout centred in the black playground (centre x = 515)
+
     place (inputKnob,     515.0f,  96.0f, 48.0f);
     place (thresholdKnob, 515.0f, 184.0f, 48.0f);
     place (posSatKnob,    479.0f, 272.0f, 42.0f);
