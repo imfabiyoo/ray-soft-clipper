@@ -131,6 +131,19 @@ void RayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         for (int i = 0; i < buffer.getNumSamples(); ++i)
             d[i] = juce::jlimit (-1.0f, 1.0f, d[i]);
     }
+
+    // Tap the output (mono sum) into the scope ring for the spectrogram.
+    const int nCh = buffer.getNumChannels();
+    const int nSm = buffer.getNumSamples();
+    int w = scopeWrite.load (std::memory_order_relaxed);
+    for (int i = 0; i < nSm; ++i)
+    {
+        float m = 0.0f;
+        for (int c = 0; c < nCh; ++c) m += buffer.getReadPointer (c)[i];
+        scopeBuf[w & scopeMask] = (nCh > 0) ? m / (float) nCh : 0.0f;
+        ++w;
+    }
+    scopeWrite.store (w, std::memory_order_release);
 }
 
 void RayAudioProcessor::getStateInformation (juce::MemoryBlock& dest)

@@ -1,5 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
+#include <array>
+#include <atomic>
 
 // ray — rebuild of Initial Clipper (Initial Audio). DSP reverse-engineered from
 // the shipped VST3 (arm64) with REA/Ghidra. Signal chain, per the binary:
@@ -35,6 +37,14 @@ public:
     void setStateInformation (const void*, int) override;
 
     juce::AudioProcessorValueTreeState apvts;
+
+    // Visualizer tap: post-processing mono samples the editor reads for the
+    // spectrogram. Lock-free ring; the audio thread writes, the UI thread reads
+    // a snapshot. Tearing on a redraw is harmless for eye-candy. Size is pow2.
+    static constexpr int scopeSize = 2048;
+    static constexpr int scopeMask = scopeSize - 1;
+    std::array<float, scopeSize> scopeBuf {};
+    std::atomic<int> scopeWrite { 0 };
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
