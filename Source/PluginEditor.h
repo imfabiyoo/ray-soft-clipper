@@ -1,16 +1,18 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include <array>
 
-// Brushed-metal analog knob: a fixed machined body with a rotating pointer +
-// specular streak. No 3D sphere — modeled after a hardware control.
+// 3D polished-chrome knob with a white indicator; reacts to the on-screen sun.
 class RayKnobLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h,
                            float pos, float startAngle, float endAngle,
                            juce::Slider&) override;
+
+    // live sunlight the chrome reacts to (set by the editor each frame)
+    float sunAmt = 0.0f, sunPhase = 0.0f;
+    juce::Colour sunCol { 0xfff4e3b0 };
 };
 
 class RayAudioProcessorEditor : public juce::AudioProcessorEditor,
@@ -38,10 +40,12 @@ private:
 
     // --- waveform scope ------------------------------------------------------
     void drawWaveform (juce::Graphics&, juce::Rectangle<float> box);
-    void drawPanelDecor (juce::Graphics&, float s);   // grain + screws = tangible
+    void drawPanelDecor (juce::Graphics&, float s);   // surface grain over the left scene
+    void drawLabels (juce::Graphics&);                // white SF Pro labels + / - signs
+    void drawWindow (juce::Graphics&, float s);       // glass sheen + clean fade into black
 
     RayAudioProcessor& proc;
-    juce::Image background;      // master 1200x800 (forest + panel)
+    juce::Image background;      // master 2800x1600 (scene + black panel)
     juce::Image gradedBg;        // hue/sat-graded working copy (component-ish res)
     juce::Image grain;           // static noise overlay for material texture
 
@@ -54,8 +58,8 @@ private:
     int   gradedW = 0;
     float phase = 0.0f;          // animation clock for rays/clouds
 
-    // spectrogram box in 600x400 design space (measured from the mockup)
-    juce::Rectangle<float> boxDesign { 326.0f, 125.0f, 265.0f, 160.0f };
+    // waveform area in 700x400 design space
+    juce::Rectangle<float> boxDesign { 355.0f, 305.0f, 330.0f, 73.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RayAudioProcessorEditor)
 };
