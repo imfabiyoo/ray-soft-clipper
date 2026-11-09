@@ -26,6 +26,44 @@ Signal chain: input gain → 8× oversample (half-band FIR) → per-sample tanh 
 → threshold soft-clip → downsample → hard clip at ±1. The visuals are purely cosmetic and
 never touch the audio path.
 
+## Install
+
+Grab the latest zip for your OS from the [Releases](../../releases/latest) page, unzip it,
+then copy the plugin into your system folder and rescan in your DAW.
+
+### macOS
+
+- **VST3** → `~/Library/Audio/Plug-Ins/VST3/`
+- **AU** → `~/Library/Audio/Plug-Ins/Components/`
+
+```sh
+# from the unzipped folder
+cp -R RayClipper.vst3 ~/Library/Audio/Plug-Ins/VST3/
+cp -R RayClipper.component ~/Library/Audio/Plug-Ins/Components/   # optional, AU
+```
+
+The build is unsigned, so the first time macOS may block it. If Gatekeeper complains,
+remove the quarantine flag:
+
+```sh
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/RayClipper.vst3
+```
+
+Then restart your DAW (or rescan plugins). In **FL Studio**: Options → Manage Plugins →
+**Find more plugins**, then enable RayClipper. To update, quit FL, replace the `.vst3`
+with the new one, and rescan.
+
+### Windows
+
+Copy `RayClipper.vst3` into the shared VST3 folder:
+
+```
+C:\Program Files\Common Files\VST3\
+```
+
+Then rescan plugins in your DAW. The Standalone `RayClipper.exe` in the zip runs on its own,
+no DAW required.
+
 ## Build
 
 Requires: CMake ≥ 3.22, a C++17 compiler (Xcode Command Line Tools on macOS).
